@@ -1,39 +1,30 @@
-# ============================================================
-# 纯 R 实现 .npy / .npz 解析
-# 不依赖 Python / reticulate / numpy
-# ============================================================
-
 parse_npy <- function(raw_vec) {
   magic <- raw_vec[1:6]
   if (!all(magic == as.raw(c(0x93, 0x4e, 0x55, 0x4d, 0x50, 0x59)))) {
     stop("not a valid .npy file")
   }
-
+  
   major <- as.integer(raw_vec[7])
   minor <- as.integer(raw_vec[8])
-
+  
   header_len <- as.integer(raw_vec[9]) + as.integer(raw_vec[10]) * 256L
-
+  
   header_start <- 11
   header_raw   <- raw_vec[header_start:(header_start + header_len - 1)]
   header_str   <- rawToChar(header_raw[header_raw != as.raw(0x0a)])
-
+  
   dtype <- regmatches(header_str,
-    regexec("'descr':\\s*'([^']+)'", header_str))[[1]][2]
-
+                      regexec("'descr':\\s*'([^']+)'", header_str))[[1]][2]
+  
   shape_str <- regmatches(header_str,
-    regexec("'shape':\\s*\\(([^)]*)\\)", header_str))[[1]][2]
+                          regexec("'shape':\\s*\\(([^)]*)\\)", header_str))[[1]][2]
   shape <- as.integer(strsplit(gsub("\\s+", "", shape_str), ",")[[1]])
   if (length(shape) == 1) {
     shape <- c(shape, 1L)
-  } else if (length(shape) == 3 && shape[1] == 1) {source("R/npy.R")
-source("R/forward.R")
-fwd <- evo2_forward(test_seq, output_layers = c("blocks.0"))
-str(fwd$layers)
-
-    shape <- shape[2:3]           # (1, 128, 8192) → (128, 8192)
+  } else if (length(shape) == 3 && shape[1] == 1) {
+    shape <- shape[2:3]
   }
-
+  
   dt_map <- list(
     "<f2" = list(bytes = 2, signed = TRUE,  type = "float16"),
     ">f2" = list(bytes = 2, signed = TRUE,  type = "float16_be"),
@@ -46,14 +37,14 @@ str(fwd$layers)
   )
   dt <- dt_map[[dtype]]
   if (is.null(dt)) stop("unsupported dtype: ", dtype)
-
+  
   aligned    <- ((10L + header_len + 15L) %/% 16L) * 16L
   data_offset <- aligned + 1L
   data_raw    <- raw_vec[data_offset:length(raw_vec)]
   total_elems <- prod(shape)
-
+  
   endian <- if (grepl("^<", dtype)) "little" else "big"
-
+  
   if (grepl("float16", dt$type)) {
     vals <- read_float16(data_raw, endian == "little")
   } else {
@@ -61,47 +52,6 @@ str(fwd$layers)
                     n = total_elems, size = dt$bytes,
                     signed = dt$signed, endian = endian)
   }
-
-  matrix(vals, nrow = shape[1], ncol = shape[2], byrow = FALSE)
-}
-
-parse_npz <- function(raw_vec) {
-  tmp_zip <- tempfile(fileext = ".zip")
-  tmp_dir <- tempfile()
-  writeBin(raw_vec, tmp_zip)
-  dir.create(tmp_dir)
-  utils::unzip(tmp_zip, exdir = tmp_dir)
-
-  files <- list.files(tmp_dir, pattern = "\\.npy$", full.names = TRUE)
-  result <- list()
-  for (f in files) {
-    nm <- gsub("\\.npy$", "", basename(f))
-    raw_npy <- readBin(f, what = "raw", n = file.info(f)$size)
-    result[[nm]] <- parse_npy(raw_npy)
-  }
-  result
-}
-
-read_float16 <- function(raw_vec, little_endian = TRUE) {
-  n <- length(raw_vec) / 2
-  result <- numeric(n)
-  for (i in seq_len(n)) {
-    idx <- (i - 1) * 2 + 1
-    b1 <- as.integer(raw_vec[idx])
-    b2 <- as.integer(raw_vec[idx + 1])
-    bits <- if (little_endian) b1 + b2 * 256L else b2 + b1 * 256L
-
-    sign  <- if (bitwAnd(bits, 0x8000) > 0) -1 else 1
-    expo  <- bitwAnd(bitwShiftR(bits, 10), 0x1F)
-    mant  <- bitwAnd(bits, 0x03FF)
-
-    if (expo == 0) {
-      result[i] <- sign * 2^(-14) * (mant / 1024)
-    } else if (expo == 31) {
-      result[i] <- if (mant == 0) sign * Inf else NaN
-    } else {
-      result[i] <- sign * 2^(expo - 15) * (1 + mant / 1024)
-    }
-  }
-  result
+  
+  matrix(vals, nrow = shape[1], ncol = shape[2], byrow = TRUE)
 }
