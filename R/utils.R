@@ -32,7 +32,9 @@ read_sequences <- function(path) {
 }
 
 write_fasta <- function(seqs, path) {
+  dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
   con <- file(path, "w")
+  
   for (nm in names(seqs)) {
     writeLines(paste0(">", nm), con)
     writeLines(seqs[[nm]], con)
@@ -42,6 +44,7 @@ write_fasta <- function(seqs, path) {
 }
 
 write_json_results <- function(results, path) {
+  dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
   good <- results[!sapply(results, is.null)]
   out <- lapply(good, function(r) list(
     prompt        = r$prompt,
