@@ -1,0 +1,19 @@
+# renv 本地库（别人靠 renv.lock 自己还原）
+renv/library/
+renv/staging/
+
+# R 项目文件
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# 系统垃圾文件
+.DS_Store
+Thumbs.db
+
+# 输出文件夹(可选)
+# output/
+
+# 环境变量（包含 API Key，绝对不能提交）
+.Renviron
