@@ -63,9 +63,11 @@ NVIDIA_API_KEY="nvapi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 ## 使用
 
-把序列文件放进 `input/` 文件夹，然后：
+把序列文件放进 `input/` 文件夹，开启梯子然后：
 
 ```r
+Sys.setenv(http_proxy = "http://127.0.0.1:7890")
+Sys.setenv(https_proxy = "http://127.0.0.1:7890")
 source("R/main.R")
 run()
 ```
