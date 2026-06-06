@@ -17,3 +17,7 @@ Thumbs.db
 
 # 环境变量（包含 API Key，绝对不能提交）
 .Renviron
+
+# conda和py虚拟库
+miniconda/
+python_env/
